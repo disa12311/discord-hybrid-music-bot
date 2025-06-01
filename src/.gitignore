@@ -1,0 +1,22 @@
+# Node.js
+node_modules/
+.env
+npm-debug.log
+.DS_Store # macOS specific file
+
+# Python
+python_backend/__pycache__/
+python_backend/.venv/ # hoặc .env/ nếu bạn dùng venv
+python_backend/*.pyc
+python_backend/env/
+.Python
+# Nếu bạn có bất kỳ file tạm thời nào do quá trình chạy Python tạo ra
+# ví dụ: *.log, *.tmp, v.v.
+
+# Môi trường phát triển/IDE
+.vscode/
+.idea/
+
+# Railway/Deployment specific
+# Bạn có thể muốn bỏ qua các tệp logs do Railway tạo ra nếu chúng được lưu trong repo
+# logs/
