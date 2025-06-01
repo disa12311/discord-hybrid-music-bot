@@ -21,22 +21,29 @@ module.exports = {
         }
 
         try {
-            // Xóa toàn bộ queue, trừ bài hát đang phát (nếu có)
-            const currentSong = queue[0];
-            client.musicQueues.set(guildId, currentSong ? [currentSong] : []); // Giữ lại bài đang phát nếu có
+            const currentlyPlaying = queue[0]; // Bài hát đang phát (nếu có)
             
-            // Nếu không có bài nào đang phát, dừng player và rời kênh
-            if (!currentSong && player) {
-                player.stop();
-                client.voicePlayers.delete(guildId);
+            // Xóa toàn bộ queue, nếu có bài đang phát thì giữ lại bài đó
+            if (currentlyPlaying) {
+                // Xóa tất cả các bài sau bài đang phát
+                queue.splice(1, queue.length - 1); 
+                client.logger.info(`${logPrefix} Đã xóa toàn bộ hàng đợi, giữ lại bài đang phát: ${currentlyPlaying.title}`);
+                await interaction.followUp('🗑️ Đã xóa toàn bộ hàng đợi nhạc, bài hát hiện tại vẫn tiếp tục phát!');
+            } else {
+                // Nếu không có bài nào đang phát (queue trống hoặc chỉ có bài cuối cùng đã xong)
+                client.musicQueues.delete(guildId); // Xóa hoàn toàn queue
+                if (player) {
+                    player.stop();
+                    client.voicePlayers.delete(guildId);
+                }
+                if (connection) {
+                    connection.destroy();
+                    client.voiceConnections.delete(guildId);
+                }
+                client.logger.info(`${logPrefix} Đã xóa toàn bộ hàng đợi và dừng phát nhạc.`);
+                await interaction.followUp('🗑️ Đã xóa toàn bộ hàng đợi nhạc và dừng phát!');
             }
-            if (!currentSong && connection) {
-                connection.destroy();
-                client.voiceConnections.delete(guildId);
-            }
-
-            client.logger.info(`${logPrefix} Đã xóa toàn bộ hàng đợi.`);
-            await interaction.followUp('🗑️ Đã xóa toàn bộ hàng đợi nhạc!');
+            
         } catch (error) {
             client.handleError(error, interaction, client);
         }
