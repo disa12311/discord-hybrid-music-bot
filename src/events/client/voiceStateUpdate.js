@@ -40,7 +40,7 @@ module.exports = {
                 client.musicQueues.delete(guildId);
                 client.logger.info(`${logPrefix} Hàng đợi nhạc đã bị xóa.`);
             }
-            if (connection) {
+            if (connection && connection.state.status !== 'destroyed') {
                 try {
                     connection.destroy();
                     client.voiceConnections.delete(guildId);
@@ -59,20 +59,17 @@ module.exports = {
         // Chỉ xử lý nếu bot đang trong kênh thoại và voiceState thay đổi trong cùng kênh đó
         if (connection && oldState.channelId === connection.channel.id && oldState.channelId !== newState.channelId) {
             const voiceChannel = oldState.channel;
-            // Lọc ra các thành viên không phải bot
             const membersInChannel = voiceChannel.members.filter(member => !member.user.bot);
 
             if (membersInChannel.size === 0) {
                 client.logger.info(`${logPrefix} Người dùng cuối cùng đã rời kênh thoại. Bắt đầu đếm ngược ngắt kết nối.`);
 
-                // Xóa timeout cũ nếu có
                 clearTimeout(client.autoDisconnectTimeouts.get(guildId));
 
                 const timeout = setTimeout(async () => {
                     client.logger.info(`${logPrefix} Auto-disconnect kích hoạt sau ${AUTO_DISCONNECT_DELAY / 1000 / 60} phút.`);
                     if (connection && connection.state.status !== 'destroyed') {
                         try {
-                            // Kiểm tra lại lần nữa trước khi rời
                             const currentVoiceChannel = await client.channels.fetch(connection.channel.id).catch(() => null);
                             if (currentVoiceChannel && currentVoiceChannel.members.filter(member => !member.user.bot).size === 0) {
                                 if (player) player.stop();
@@ -91,12 +88,11 @@ module.exports = {
                             client.handleError(err, null, client);
                         }
                     }
-                    client.autoDisconnectTimeouts.delete(guildId); // Xóa timeout sau khi chạy
+                    client.autoDisconnectTimeouts.delete(guildId);
                 }, AUTO_DISCONNECT_DELAY);
 
-                client.autoDisconnectTimeouts.set(guildId, timeout); // Lưu timeout vào Collection
+                client.autoDisconnectTimeouts.set(guildId, timeout);
             } else {
-                // Nếu có người dùng vào lại kênh trước khi timeout, hủy timeout
                 if (client.autoDisconnectTimeouts.has(guildId)) {
                     clearTimeout(client.autoDisconnectTimeouts.get(guildId));
                     client.autoDisconnectTimeouts.delete(guildId);
