@@ -18,6 +18,7 @@ module.exports = () => {
     client.voicePlayers = new Collection();     // Map: guildId -> AudioPlayer
     client.musicQueues = new Collection();      // Map: guildId -> Array of songs (object { song_info, textChannelId, requester, _loopMode })
     client.voiceConnections = new Collection(); // Map: guildId -> VoiceConnection
+    client.autoDisconnectTimeouts = new Collection(); // NEW: Map: guildId -> Timeout object
 
     // Gắn các utility functions vào client để truy cập dễ dàng
     client.logger = logger;
