@@ -1,32 +1,31 @@
-# src/Dockerfile
-# Base image cho Node.js (sử dụng phiên bản Node.js 18 hoặc 20, tương thích với discord.js v14)
-FROM node:18-slim
+# Sử dụng base image Node.js LTS
+FROM node:20-alpine
 
-# Đặt thư mục làm việc
+# Thiết lập thư mục làm việc trong container
 WORKDIR /app
 
-# Copy package.json và package-lock.json để cài đặt dependencies
-COPY package.json package-lock.json ./
+# Sao chép package.json và package-lock.json (nếu có)
+# để cài đặt dependencies
+COPY package*.json ./
 
-# Cài đặt Node.js dependencies
-RUN npm install
+# Cài đặt các dependencies của Node.js
+# --omit=dev để không cài các gói dev trong môi trường production
+RUN npm install --omit=dev
 
-# Copy tất cả các file còn lại của bot vào thư mục làm việc
-COPY . .
+# Cài đặt ffmpeg-static và libsodium-wrappers
+# ffmpeg-static cần thiết để phát nhạc với @discordjs/voice
+# libsodium-wrappers là một dependency của @discordjs/voice cho mã hóa âm thanh
+RUN npm install ffmpeg-static libsodium-wrappers --omit=dev
 
-# --- Bắt đầu phần thêm vào (Tùy chọn và Thử nghiệm) ---
-# Tối ưu DNS resolution trong container
-# Railway thường đã xử lý tốt, nhưng nếu gặp lỗi ENOTFOUND dai dẳng,
-# bạn có thể thử đảm bảo resolv.conf trỏ đến nameserver của Docker hoặc của hệ thống.
-# Đây là cách để thêm Google DNS (8.8.8.8) như một fallback.
-# Lưu ý: Điều này có thể không cần thiết hoặc thậm chí không hoạt động hiệu quả
-# nếu Railway có cơ chế DNS internal riêng biệt.
-# RUN echo "nameserver 8.8.8.8" >> /etc/resolv.conf
-# RUN echo "options ndots:0 timeout:1 attempts:1" >> /etc/resolv.conf
-# --- Kết thúc phần thêm vào ---
+# Sao chép toàn bộ mã nguồn của ứng dụng vào thư mục làm việc
+COPY src/ ./src/
 
+# Đảm bảo các biến môi trường được thiết lập đúng cách trong môi trường Railway
+# Railway sẽ tự động inject các biến từ Dashboard vào runtime của container
 
-# Lệnh để khởi chạy bot
-# PM2 được khuyến nghị để quản lý tiến trình và tự khởi động lại khi crash
-RUN npm install -g pm2 # Cài đặt PM2
-CMD ["pm2-runtime", "index.js"] # Khởi chạy bot bằng pm2-runtime
+# Mở port nếu ứng dụng Node.js có listen (Bot Discord không cần)
+# EXPOSE 3000
+
+# Lệnh để chạy ứng dụng khi container khởi động
+# npm start sẽ chạy node src/index.js (định nghĩa trong package.json)
+CMD ["npm", "start"]
