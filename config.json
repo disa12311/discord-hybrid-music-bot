@@ -1,6 +1,13 @@
 {
-    "TOKEN": "YOUR_BOT_TOKEN_HERE",
-    "CLIENT_ID": "YOUR_BOT_CLIENT_ID_HERE",
-    "GUILD_ID": "YOUR_GUILD_ID_FOR_SLASH_COMMANDS"
-    "PYTHON_API_URL": "http://python-music-api:5000/api/get_music_info"
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "CommonJS",
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  }
 }
