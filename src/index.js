@@ -1,165 +1,175 @@
-// src/index.js
-require('dotenv').config(); // Load biến môi trường từ .env
+// src/index.js (hoặc file cấu hình player của bạn)
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Player } = require('discord-player');
+const { REST } = require('@discordjs/rest');
+const { Routes } = require('discord-api-types/v9');
 const fs = require('node:fs');
 const path = require('node:path');
-const { Player } = require('discord-player');
-const setupErrorHandler = require('./utils/errorHandler'); // Import error handler
+require('dotenv').config();
+const fetch = require('node-fetch'); // Đảm bảo đã cài node-fetch
 
-// --- Cấu hình Client Discord ---
+const { registerErrorHandler } = require('./utils/errorHandler');
+
+const CLIENT_ID = process.env.CLIENT_ID;
+const GUILD_ID = process.env.GUILD_ID;
+const TOKEN = process.env.DISCORD_TOKEN;
+const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL; // Lấy URL từ biến môi trường
+
 const client = new Client({
     intents: [
-        GatewayIntentBits.Guilds,           // Cần để lấy thông tin guild (server)
-        GatewayIntentBits.GuildMessages,    // Cần để đọc và gửi tin nhắn
-        GatewayIntentBits.MessageContent,   // Cần để đọc nội dung tin nhắn (nếu dùng prefix commands, hiện tại tập trung slash)
-        GatewayIntentBits.GuildVoiceStates, // Cần để bot kết nối và quản lý voice channel
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.MessageContent, // Cần cho việc đọc tin nhắn nếu bạn có lệnh prefix hoặc tương tác tin nhắn
     ],
 });
 
-// Gán Collection cho commands và events để dễ dàng truy cập
 client.commands = new Collection();
-client.events = new Collection();
-
-// --- Tải Commands và Events ---
-const loadFiles = (dir, collection, type) => {
-    const filesPath = path.join(__dirname, dir);
-    const fileNames = fs.readdirSync(filesPath).filter(file => file.endsWith('.js'));
-
-    for (const file of fileNames) {
-        const filePath = path.join(filesPath, file);
-        const module = require(filePath);
-        if ('data' in module || 'name' in module) { // Kiểm tra có phải lệnh hoặc sự kiện hợp lệ
-            collection.set(module.data?.name || module.name, module);
-            console.log(`[LOADER] Đã tải ${type}: ${module.data?.name || module.name}`);
-        } else {
-            console.warn(`[LOADER] ${filePath} thiếu thuộc tính "data" hoặc "name" bắt buộc.`);
-        }
-    }
-};
-
-loadFiles('commands', client.commands, 'lệnh');
-loadFiles('events', client.events, 'sự kiện');
-
-// --- Cấu hình Discord Player ---
-const player = new Player(client, {
+client.cooldowns = new Collection(); // Khởi tạo Collection cho cooldowns
+client.player = new Player(client, {
     ytdlOptions: {
-        filter: 'audioonly', // Chỉ lấy audio
         quality: 'highestaudio',
-        // highWaterMark: 1 << 25, // Tùy chỉnh buffer nếu cần
+        filter: 'audioonly',
+        dlChunkSize: 0, // Không chia nhỏ khi download, tăng tốc độ nhưng có thể tốn RAM hơn
+        liveBuffer: 5000 // Tăng buffer cho live stream
     },
-    // Đặt options cho engine tìm kiếm mặc định
-    // Ví dụ: searchSongs: 5 để tìm 5 bài hát nếu query không phải URL
-    // Tuy nhiên, chúng ta sẽ override search engine để dùng Python backend
+    connectionTimeout: 60_000, // Tăng timeout cho kết nối
+    queueTimeout: 300_000 // Tăng timeout cho queue trống
 });
 
-// Gán player cho client để các lệnh có thể truy cập
-client.player = player;
+// Load commands
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
-// --- Ghi đè Search Engine của Discord Player để sử dụng Python Backend ---
-// Đây là cải tiến quan trọng để bot sử dụng backend Python của bạn
-player.extractors.register(async (query, options) => {
-    // Chỉ xử lý nếu query không phải là một URL đã được hỗ trợ bởi các extractor khác của discord-player
-    // hoặc nếu bạn muốn MỌI TÌM KIẾM đều qua backend Python của bạn
-    // if (query.startsWith('http://') || query.startsWith('https://')) return; // Bỏ qua nếu là URL
-
-    const PYTHON_API_BASE_URL = process.env.PYTHON_API_BASE_URL;
-    if (!PYTHON_API_BASE_URL) {
-        console.error("Thiếu biến môi trường PYTHON_API_BASE_URL. Không thể gọi backend Python.");
-        return null; // Không thể tìm kiếm
+for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    if ('data' in command && 'execute' in command) {
+        client.commands.set(command.data.name, command);
+        console.log(`Đã tải lệnh: ${command.data.name}`);
+    } else {
+        console.warn(`[WARNING] Lệnh tại ${filePath} thiếu thuộc tính "data" hoặc "execute" bắt buộc.`);
     }
+}
 
+// Load events
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+
+for (const file of eventFiles) {
+    const filePath = path.join(eventsPath, file);
+    const event = require(filePath);
+    if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args));
+    } else {
+        client.on(event.name, (...args) => event.execute(...args));
+    }
+}
+
+// ========================================================================================================
+// Custom Extractor cho Python Backend
+// ========================================================================================================
+client.player.extractors.register(async (query, options) => {
+    // Chỉ xử lý nếu query là URL hợp lệ (ví dụ: không phải là từ khóa tìm kiếm)
+    // Hoặc bạn có thể bỏ qua kiểm tra này nếu muốn Python xử lý cả tìm kiếm
     try {
-        // Tạo URL API cho music info
-        const api_url = `${PYTHON_API_BASE_URL}/api/get_music_info?query=${encodeURIComponent(query)}`;
-        console.log(`[Python Backend] Đang gọi API: ${api_url}`);
+        const url = new URL(query); // Kiểm tra xem query có phải là URL hợp lệ không
+        // Nếu là URL, gửi đến Python backend
+        const response = await fetch(`${PYTHON_BACKEND_URL}/extract`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: query })
+        });
 
-        const response = await fetch(api_url);
         if (!response.ok) {
-            console.error(`[Python Backend] Lỗi HTTP: ${response.status} ${response.statusText} khi gọi ${api_url}`);
             const errorText = await response.text();
-            console.error(`[Python Backend] Phản hồi lỗi: ${errorText}`);
-            return null; // Không tìm thấy hoặc lỗi từ backend
+            console.error(`[Python Extractor] Lỗi từ Python backend (${response.status}): ${errorText}`);
+            return null; // Trả về null để discord-player thử các extractor khác
         }
 
         const data = await response.json();
-
-        if (data.error) {
-            console.error(`[Python Backend] Backend trả về lỗi: ${data.error}`);
+        // Kiểm tra cấu trúc dữ liệu trả về từ Python backend
+        if (data && data.title && data.url && data.source) {
+            // Trả về định dạng mà discord-player mong đợi
+            return {
+                playlist: null, // Giả định Python backend chỉ trả về 1 track, không phải playlist
+                // Nếu Python có thể trả về playlist, bạn sẽ cần cấu hình lại phần này.
+                tracks: [{
+                    title: data.title,
+                    url: data.url,
+                    duration: data.duration || '00:00', // Thêm duration nếu có
+                    thumbnail: data.thumbnail || null, // Thêm thumbnail nếu có
+                    author: data.uploader || 'Unknown', // Thêm author/uploader nếu có
+                    description: data.description || 'No description',
+                    views: data.view_count || 0,
+                    requestedBy: options.requestedBy || client.user,
+                    source: data.source || 'custom', // Nguồn từ Python backend
+                    // Các thuộc tính khác nếu Python backend cung cấp
+                }]
+            };
+        } else {
+            console.warn(`[Python Extractor] Dữ liệu không hợp lệ từ Python backend:`, data);
             return null;
         }
-
-        if (!data.stream_url) {
-            console.error(`[Python Backend] Không tìm thấy stream_url trong phản hồi từ backend cho query: ${query}`);
-            return null;
-        }
-
-        // Trả về một đối tượng Track phù hợp với Discord Player
-        // Type có thể là 'track', 'playlist', 'album', 'artist'
-        return {
-            playlist: null, // Không phải playlist
-            type: 'track',
-            url: data.url, // URL của trang gốc (YouTube)
-            title: data.title,
-            description: data.title, // Có thể cải thiện sau
-            author: data.uploader || 'Unknown', // Thêm uploader nếu có
-            thumbnail: data.thumbnail,
-            duration: data.duration ? player.utils.formatTime(data.duration * 1000) : '0:00', // Format thời lượng
-            views: data.view_count || 0,
-            requestedBy: null, // Sẽ được điền khi add vào queue
-            source: 'custom_python_backend', // Nguồn tùy chỉnh của bạn
-            raw: {
-                streamUrl: data.stream_url, // Stream URL trực tiếp từ backend
-                url: data.url,
-                duration: data.duration
-            },
-            // streamURL: data.stream_url // Discord-player sẽ tự động tìm từ raw.streamUrl hoặc url
-        };
-    } catch (error) {
-        console.error(`[Python Backend] Lỗi khi gọi backend Python hoặc xử lý dữ liệu:`, error);
-        return null; // Lỗi trong quá trình tìm kiếm
+    } catch (e) {
+        // Nếu query không phải là URL, hoặc có lỗi khi gọi fetch
+        console.log(`[Python Extractor] Query không phải URL hợp lệ hoặc lỗi fetch: ${e.message}. Fallback to default extractors.`);
+        return null; // Trả về null để discord-player thử các extractor khác
     }
-}, { name: 'python-backend-search', parallelism: 1, searchable: true }); // Đăng ký extractor mới với tên duy nhất
-
-// Đăng ký Event Listener cho Discord Player
-client.player.events.on('playerStart', (queue, track) => {
-    // Gửi thông báo khi bắt đầu phát nhạc
-    queue.metadata.channel.send(`🎶 Đang phát: **${track.title}** của **${track.author}**!`);
+}, {
+    // Bạn có thể đặt tên và thứ tự ưu tiên cho extractor của mình
+    name: 'python-youtube-extractor',
+    priority: 1 // Đặt ưu tiên cao để nó được thử trước
 });
 
-client.player.events.on('audioTrackAdd', (queue, track) => {
-    queue.metadata.channel.send(`🎵 Đã thêm **${track.title}** vào hàng đợi!`);
-});
 
-client.player.events.on('disconnect', queue => {
-    queue.metadata.channel.send('❌ Bot đã bị ngắt kết nối khỏi kênh thoại.');
-});
+// Xử lý lỗi toàn cục
+registerErrorHandler(client);
 
-client.player.events.on('emptyChannel', queue => {
-    queue.metadata.channel.send('🔊 Kênh thoại trống rỗng! Đang rời kênh...');
-    queue.connection.destroy(); // Tự động rời kênh và hủy kết nối
-});
+client.on('ready', () => {
+    console.log(`Đăng nhập thành công với tên ${client.user.tag}!`);
+    console.log(`Bot đã sẵn sàng phục vụ ${client.guilds.cache.size} máy chủ.`);
 
-client.player.events.on('emptyQueue', queue => {
-    queue.metadata.channel.send('✅ Hàng đợi đã kết thúc. Đang rời kênh...');
-    queue.connection.destroy(); // Tự động rời kênh và hủy kết nối
-});
+    // Đăng ký các sự kiện của discord-player
+    client.player.events.on('playerStart', (queue, track) => {
+        if (!queue.metadata.channel) return;
+        queue.metadata.channel.send(`🎶 Đang phát: **${track.title}** trong ${queue.channel.name}!`);
+    });
 
-client.player.events.on('error', (queue, error) => {
-    console.error(`[Discord Player Error] ${error.message}`);
-    // console.error(error); // Log đầy đủ lỗi nếu cần
-    if (queue) {
-        queue.metadata.channel.send(`🚫 Đã xảy ra lỗi khi phát nhạc: ${error.message}`);
-    } else {
-        // Gửi lỗi chung đến kênh admin nếu không có queue cụ thể
-        const adminLogChannel = client.channels.cache.get(process.env.ADMIN_LOG_CHANNEL_ID);
-        if (adminLogChannel) {
-            adminLogChannel.send(`🚫 [Discord Player Error] Đã xảy ra lỗi tổng quát: ${error.message}`);
+    client.player.events.on('audioTrackAdd', (queue, track) => {
+        if (!queue.metadata.channel) return;
+        queue.metadata.channel.send(`🎵 Đã thêm **${track.title}** vào hàng đợi.`);
+    });
+
+    client.player.events.on('disconnect', (queue) => {
+        if (!queue.metadata.channel) return;
+        queue.metadata.channel.send('❌ Bot đã bị ngắt kết nối khỏi kênh thoại.');
+    });
+
+    client.player.events.on('emptyChannel', (queue) => {
+        if (!queue.metadata.channel) return;
+        queue.metadata.channel.send('🔊 Kênh thoại đã trống rỗng, đang rời kênh.');
+    });
+
+    client.player.events.on('emptyQueue', (queue) => {
+        if (!queue.metadata.channel) return;
+        queue.metadata.channel.send('✅ Hàng đợi đã trống rỗng, không còn nhạc để phát.');
+    });
+
+    client.player.events.on('error', (queue, error) => {
+        console.error(`[Player Error] Lỗi từ Discord Player trong guild ${queue.guild.name}:`, error);
+        if (queue.metadata.channel) {
+            queue.metadata.channel.send(`🚫 Đã xảy ra lỗi khi phát nhạc: ${error.message}`);
         }
-    }
+    });
+
+    // Event khi một track không thể phát được
+    client.player.events.on('playerError', (queue, error) => {
+        console.error(`[Player Error] Lỗi khi phát track trong guild ${queue.guild.name}:`, error);
+        if (queue.metadata.channel) {
+            queue.metadata.channel.send(`🚫 Có vẻ như không thể phát bài hát này: ${error.message}`);
+        }
+    });
 });
 
-// --- Setup Error Handler Toàn Cục ---
-setupErrorHandler(client); // Truyền client vào để error handler có thể gửi thông báo
-
-// --- Đăng nhập Bot ---
-client.login(process.env.DISCORD_TOKEN);
+client.login(TOKEN);
