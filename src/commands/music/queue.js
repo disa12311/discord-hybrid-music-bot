@@ -75,8 +75,8 @@ module.exports = {
 
         // Tạo collector để xử lý tương tác nút
         const collector = msg.createMessageComponentCollector({
-            filter: i => i.customId === 'prev_queue' || i.customId === 'next_queue',
-            time: 60000 // Hết hạn sau 60 giây
+    filter: i => i.customId === 'prev_queue' || i.customId === 'next_queue',
+    time: 120000 // Tăng lên 2 phút (120 giây) hoặc lâu hơn tùy ý
         });
 
         collector.on('collect', async i => {
