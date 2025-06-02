@@ -30,3 +30,27 @@ eventHandler(client, path.join(__dirname, 'events'));
 client.login(DISCORD_TOKEN)
     .then(() => logger.info("Bot đã đăng nhập thành công vào Discord!"))
     .catch(error => logger.error(`Lỗi khi đăng nhập vào Discord: ${error.message}`, error));
+
+const http = require('http');
+
+const HEALTH_CHECK_PORT = process.env.HEALTH_CHECK_PORT || 3000; // Cổng cho health check
+
+const server = http.createServer((req, res) => {
+    if (req.url === '/health' && req.method === 'GET') {
+        // Kiểm tra trạng thái bot đơn giản (ví dụ: đã đăng nhập Discord chưa)
+        if (client.isReady()) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'ok', uptime: client.uptime }));
+        } else {
+            res.writeHead(503, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'not_ready', message: 'Bot is not ready yet.' }));
+        }
+    } else {
+        res.writeHead(404);
+        res.end('Not Found');
+    }
+});
+
+server.listen(HEALTH_CHECK_PORT, () => {
+    client.logger.info(`Health check server đang chạy trên cổng ${HEALTH_CHECK_PORT}`);
+});
