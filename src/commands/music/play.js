@@ -12,7 +12,7 @@ module.exports = {
             option.setName('query')
                 .setDescription('Tên bài hát hoặc URL (YouTube, Spotify, SoundCloud, v.v.)')
                 .setRequired(true)),
-
+                .setAutocomplete(true)),
     async execute(interaction, client) {
         const query = interaction.options.getString('query');
         const voiceChannel = interaction.member.voice.channel;
