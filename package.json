@@ -13,12 +13,14 @@
   "license": "ISC",
   "dependencies": {
     "@discordjs/voice": "^0.16.0",
-    "@discord-player/extractor": "^4.4.1", # Để discord-player xử lý các link khác nếu cần
+    "@discord-player/extractor": "^4.4.1",
     "discord-player": "^6.6.9",
     "discord.js": "^14.14.1",
     "dotenv": "^16.4.5",
-    "node-fetch": "^3.3.2" # Dùng để gọi API từ backend Python
-    # ... các dependencies khác bạn có (vd: ms nếu dùng cho timeouts)
+    "node-fetch": "^3.3.2"
+    // Đảm bảo không có dòng nào của @distube/soundcloud ở đây nếu bạn không cần nó
+    // Nếu bạn vẫn muốn dùng Distube, hãy đảm bảo phiên bản và cách cài đặt đúng
+    // Nhưng với hướng dẫn của chúng ta, chúng ta đang dùng discord-player.
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
