@@ -20,7 +20,7 @@
     "dotenv": "^16.0.0",
     "distube": "^4.0.0",
     "@distube/spotify": "^4.0.0",
-    "@distube/soundcloud": "^4.0.0"
+    "@distube/soundcloud": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
