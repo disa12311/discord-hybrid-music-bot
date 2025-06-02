@@ -19,8 +19,8 @@ const client = createDiscordClient();
 
 // --- Xử lý lỗi toàn cục ---
 // Sử dụng handleError từ client.handleError (đã được gắn vào client trong client.js)
-process.on('unhandledRejection', (reason, promise) => client.handleError(reason, null, client));
-process.on('uncaughtException', (err, origin) => client.handleError(err, null, client));
+process.on('unhandledRejection', (reason, promise) => client.handleError(reason, null, client, true)); // Lỗi fatal
+process.on('uncaughtException', (err, origin) => client.handleError(err, null, client, true)); // Lỗi fatal
 
 // --- Tải Commands và Events (sử dụng Handlers) ---
 commandHandler(client, path.join(__dirname, 'commands'));
