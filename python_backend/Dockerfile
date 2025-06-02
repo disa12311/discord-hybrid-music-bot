@@ -1,28 +1,23 @@
-# python_backend/Dockerfile
-# Sử dụng image Python slim để giảm kích thước
-FROM python:3.10-slim-bullseye
+# Sử dụng Node.js base image phiên bản 20 slim (nhẹ hơn)
+FROM node:20-slim
 
-# Thiết lập biến môi trường để tối ưu Python trong Docker
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Tạo và chuyển đến thư mục làm việc trong container
+# Thiết lập thư mục làm việc bên trong container
 WORKDIR /app
 
-# Copy file requirements.txt và cài đặt dependencies trước
-# Điều này giúp tận dụng Docker cache nếu dependencies không thay đổi
-COPY requirements.txt .
-RUN pip install --upgrade pip &&
-    pip install --no-cache-dir -r requirements.txt
+# Copy package.json và package-lock.json để tận dụng Docker cache
+# Điều này giúp npm install chỉ chạy lại khi dependencies thay đổi
+COPY package.json package-lock.json* ./
+
+# Cài đặt các dependencies
+# --omit=dev để chỉ cài các gói cần thiết cho production
+RUN npm install --omit=dev
+
 # Copy toàn bộ mã nguồn ứng dụng vào container
 COPY . .
 
-# Mở cổng mà Flask/Gunicorn sẽ chạy
-EXPOSE 5000
+# Mở cổng mà ứng dụng sẽ lắng nghe (tùy chọn, bot Discord không cần expose public port)
+# EXPOSE 3000 # Chỉ là ví dụ, không bắt buộc cho bot Discord
 
-# Lệnh để chạy ứng dụng bằng Gunicorn
-# Sử dụng Gunicorn để phục vụ Flask app
-# -w: số lượng worker (thường là 2*CPU + 1)
-# -b: lắng nghe trên tất cả các địa chỉ IP trên cổng 5000
-# app: Flask instance (tên file module: tên biến Flask app)
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
+# Lệnh để chạy ứng dụng khi container khởi động
+# Đảm bảo lệnh này chạy file index.js của bạn
+CMD ["node", "src/index.js"]
