@@ -10,35 +10,19 @@ module.exports = {
         .setDMPermission(false), // Không cho phép dùng trong DM
     
     async execute(interaction, client) {
-        const guildId = interaction.guild.id;
-        const player = client.voicePlayers.get(guildId);
-        const queue = client.musicQueues.get(guildId);
-        const connection = client.voiceConnections.get(guildId);
-        const logPrefix = `[StopCommand][${guildId}]`;
+    // Luôn deferReply trước khi kiểm tra quyền nếu bạn muốn trả lời lỗi
+    await interaction.deferReply({ ephemeral: true });
 
-        await interaction.deferReply();
+    // Đảm bảo lệnh chỉ dùng trong Guild
+    if (!interaction.inGuild()) {
+        return interaction.followUp({ content: 'Lệnh này chỉ có thể sử dụng trong một máy chủ (server).', ephemeral: true });
+    }
 
-        if (!player && (!queue || queue.length === 0) && (!connection || connection.state.status === VoiceConnectionStatus.Destroyed)) {
-            client.logger.info(`${logPrefix} Bot không phát nhạc và không có hàng đợi.`);
-            return interaction.followUp({ content: 'Bot hiện không phát nhạc và không có hàng đợi để dừng.', ephemeral: true });
-        }
-
-        try {
-            if (player) {
-                player.stop();
-                client.voicePlayers.delete(guildId);
-                client.logger.info(`${logPrefix} Player đã dừng.`);
-            }
-            if (queue) {
-                client.musicQueues.delete(guildId);
-                client.logger.info(`${logPrefix} Hàng đợi nhạc đã bị xóa.`);
-            }
-            if (connection) {
-                connection.destroy(); // Hủy kết nối thoại
-                client.voiceConnections.delete(guildId);
-                client.logger.info(`${logPrefix} Kết nối thoại đã bị hủy.`);
-            }
-
+    // Kiểm tra quyền hạn của người dùng (lớp bảo vệ thứ hai)
+    // Nếu bạn đã dùng setDefaultMemberPermissions, dòng này có thể dư thừa nhưng an toàn.
+    if (!interaction.member.permissions.has(PermissionFlagsBits.KickMembers)) {
+        return interaction.followUp({ content: 'Bạn không có đủ quyền để sử dụng lệnh này! (Yêu cầu quyền Kick Members).', ephemeral: true });
+    }
             await interaction.followUp('⏹️ Đã dừng phát nhạc và xóa hàng đợi.');
         } catch (error) {
             client.handleError(error, interaction, client);
