@@ -9,4 +9,7 @@ const logger = {
     critical: (message, error) => console.error(chalk.bgRed.white(`[CRITICAL] ${new Date().toISOString()} ${message}`), error ? error : '') // Lỗi cực kỳ nghiêm trọng
 };
 
-module.exports = logger;
+module.exports = {
+  info: (...args) => console.log("[INFO]", ...args),
+  error: (...args) => console.error("[ERROR]", ...args)
+};
