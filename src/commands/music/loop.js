@@ -1,50 +1,54 @@
-// src/commands/music/loop.js
+// src/commands/loop.js
 const { SlashCommandBuilder } = require('discord.js');
+const { QueueRepeatMode } = require('discord-player');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('loop')
-        .setDescription('Thiết lập chế độ lặp lại cho bài hát hoặc hàng đợi.')
-        .addStringOption(option =>
+        .setDescription('Đặt chế độ lặp lại cho nhạc.')
+        .addIntegerOption(option =>
             option.setName('mode')
-                .setDescription('Chọn chế độ lặp')
+                .setDescription('Chọn chế độ lặp lại.')
                 .setRequired(true)
                 .addChoices(
-                    { name: 'Tắt lặp lại', value: 'off' },
-                    { name: 'Lặp lại bài hát hiện tại', value: 'song' },
-                    { name: 'Lặp lại toàn bộ hàng đợi', value: 'queue' },
+                    { name: 'Tắt lặp lại', value: QueueRepeatMode.OFF },
+                    { name: 'Lặp lại bài hát hiện tại', value: QueueRepeatMode.TRACK },
+                    { name: 'Lặp lại hàng đợi', value: QueueRepeatMode.QUEUE }
                 )),
+    async execute(interaction) {
+        await interaction.deferReply();
 
-    async execute(interaction, client) {
-        const guildId = interaction.guild.id;
-        const loopMode = interaction.options.getString('mode');
-        const queue = client.musicQueues.get(guildId);
-        const logPrefix = `[LoopCommand][${guildId}]`;
+        const { guildId } = interaction;
+        const queue = interaction.client.player.queues.get(guildId);
 
-        if (!queue || queue.length === 0) {
-            client.logger.info(`${logPrefix} Không có hàng đợi hoặc hàng đợi trống.`);
-            return interaction.reply({ content: 'Không có hàng đợi nhạc nào đang hoạt động để thiết lập chế độ lặp.', ephemeral: true });
+        if (!queue || !queue.isPlaying()) {
+            return interaction.editReply('❌ Bot không có nhạc nào đang phát.');
         }
 
-        await interaction.deferReply({ ephemeral: true });
+        const mode = interaction.options.getInteger('mode');
+        let message;
 
-        queue._loopMode = loopMode; // Lưu trạng thái lặp vào queue object
-        client.logger.info(`${logPrefix} Đã đặt chế độ lặp thành: ${loopMode}`);
-
-        let replyContent;
-        switch (loopMode) {
-            case 'off':
-                replyContent = '❌ Đã tắt chế độ lặp lại.';
-                break;
-            case 'song':
-                replyContent = '🔂 Đã bật chế độ lặp lại bài hát hiện tại.';
-                break;
-            case 'queue':
-                replyContent = '🔁 Đã bật chế độ lặp lại toàn bộ hàng đợi.';
-                break;
-            default:
-                replyContent = 'Chế độ lặp không hợp lệ.';
+        try {
+            switch (mode) {
+                case QueueRepeatMode.OFF:
+                    queue.setRepeatMode(QueueRepeatMode.OFF);
+                    message = '🔁 Đã tắt chế độ lặp lại.';
+                    break;
+                case QueueRepeatMode.TRACK:
+                    queue.setRepeatMode(QueueRepeatMode.TRACK);
+                    message = '🔂 Đang lặp lại bài hát hiện tại.';
+                    break;
+                case QueueRepeatMode.QUEUE:
+                    queue.setRepeatMode(QueueRepeatMode.QUEUE);
+                    message = '🔁 Đang lặp lại toàn bộ hàng đợi.';
+                    break;
+                default:
+                    message = 'Chế độ lặp lại không hợp lệ.';
+            }
+            return interaction.editReply(message);
+        } catch (error) {
+            console.error(`[Loop Command] Lỗi khi đặt chế độ lặp:`, error);
+            return interaction.editReply(`🚫 Đã xảy ra lỗi khi đặt chế độ lặp: ${error.message}`);
         }
-        await interaction.followUp({ content: replyContent, ephemeral: false });
     },
 };
