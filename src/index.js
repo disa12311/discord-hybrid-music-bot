@@ -5,9 +5,10 @@ const path = require("path");
 const { DisTube } = require("distube");
 const { SpotifyPlugin } = require("@distube/spotify");
 const { SoundCloudPlugin } = require("@distube/soundcloud");
-const { info, error } = require("./utils/logger");
+const { info } = require("./utils/logger");
+const errorHandler = require("./utils/errorHandler");
 
-// Tạo client Discord với intents cần thiết
+// Tạo client
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -17,10 +18,8 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-// Map để lưu slash commands
+// Load commands (giữ nguyên cách bạn làm)
 client.commands = new Collection();
-
-// Đệ quy load command
 const commandsPath = path.join(__dirname, "commands");
 function loadCommands(dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -38,7 +37,7 @@ function loadCommands(dir) {
 }
 loadCommands(commandsPath);
 
-// Khởi tạo DisTube với plugin Spotify & SoundCloud
+// Khởi tạo DisTube
 client.distube = new DisTube(client, {
   leaveOnEmpty: true,
   leaveOnFinish: false,
@@ -52,19 +51,22 @@ client.distube = new DisTube(client, {
   ]
 });
 
-// Load events
+// Load các event khác (ready, interactionCreate, v.v.)
 const eventsPath = path.join(__dirname, "events");
-const eventFiles = fs.readdirSync(eventsPath).filter(f => f.endsWith(".js"));
-for (const file of eventFiles) {
-  const event = require(path.join(eventsPath, file));
-  if (event.once) {
-    client.once(event.name, (...args) => event.execute(...args, client));
-  } else {
-    client.on(event.name, (...args) => event.execute(...args, client));
-  }
-}
+fs.readdirSync(eventsPath)
+  .filter(file => file.endsWith(".js"))
+  .forEach(file => {
+    const event = require(path.join(eventsPath, file));
+    if (event.once) {
+      client.once(event.name, (...args) => event.execute(...args, client));
+    } else {
+      client.on(event.name, (...args) => event.execute(...args, client));
+    }
+  });
 
-// Đăng nhập bot
-client.login(TOKEN).catch(err => {
-  error("Đăng nhập thất bại:", err);
-});
+// Gắn error handler từ file hiện có
+client.on("error", errorHandler);
+client.on("warn", info); // nếu muốn ghi warn ra console
+
+// Đăng nhập
+client.login(TOKEN).catch(errorHandler);
