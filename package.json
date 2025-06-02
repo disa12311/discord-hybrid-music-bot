@@ -1,31 +1,26 @@
 {
   "name": "discord-hybrid-music-bot",
   "version": "1.0.0",
-  "description": "A hybrid Discord music bot with TypeScript, DisTube, slash commands, deploy on Railway",
-  "main": "dist/index.js",
+  "description": "A Discord Music Bot with Node.js frontend and Python backend.",
+  "main": "src/index.js",
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "build": "tsc",
-    "deploy-commands": "ts-node src/utils/deploy-commands.ts"
+    "start": "node src/index.js",
+    "deploy-commands": "node src/deploy-commands.js",
+    "dev": "nodemon src/index.js"
   },
-  "keywords": ["discord", "music", "typescript", "disTube"],
-  "author": "disa12311",
-  "license": "MIT",
+  "keywords": ["discord", "music", "bot", "nodejs", "python", "hybrid"],
+  "author": "Your Name",
+  "license": "ISC",
   "dependencies": {
-    "@discordjs/builders": "^1.5.0",
-    "@discordjs/rest": "^1.5.0",
-    "discord-api-types": "^0.37.0",
-    "discord.js": "^14.0.0",
-    "dotenv": "^16.0.0",
-    "distube": "^4.0.0",
-    "@distube/spotify": "^4.0.0",
-    "@distube/soundcloud": "^2.0.4"
+    "@discordjs/voice": "^0.16.0",
+    "@discord-player/extractor": "^4.4.1", # Để discord-player xử lý các link khác nếu cần
+    "discord-player": "^6.6.9",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2" # Dùng để gọi API từ backend Python
+    # ... các dependencies khác bạn có (vd: ms nếu dùng cho timeouts)
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
-    "ts-node": "^10.0.0",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^4.9.0"
+    "nodemon": "^3.1.0"
   }
 }
