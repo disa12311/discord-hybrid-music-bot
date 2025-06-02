@@ -1,11 +1,13 @@
 // src/commands/music/clear.js
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('clear')
-        .setDescription('Xóa toàn bộ hàng đợi nhạc.'),
-
+        .setDescription('Xóa toàn bộ hàng đợi nhạc.')
+        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers) // Quyền tương tự
+        .setDMPermission(false),
+    
     async execute(interaction, client) {
         const guildId = interaction.guild.id;
         const queue = client.musicQueues.get(guildId);
