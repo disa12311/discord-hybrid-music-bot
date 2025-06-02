@@ -1,12 +1,14 @@
 // src/commands/music/stop.js
-const { SlashCommandBuilder } = require('discord.js');
-const { VoiceConnectionStatus } = require('@discordjs/voice');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('stop')
-        .setDescription('Dừng phát nhạc và xóa toàn bộ hàng đợi.'),
-
+        .setDescription('Dừng phát nhạc và xóa toàn bộ hàng đợi.')
+        // Chỉ những người có quyền "Kick Members" (hoặc cao hơn) mới có thể dùng lệnh này
+        .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
+        .setDMPermission(false), // Không cho phép dùng trong DM
+    
     async execute(interaction, client) {
         const guildId = interaction.guild.id;
         const player = client.voicePlayers.get(guildId);
