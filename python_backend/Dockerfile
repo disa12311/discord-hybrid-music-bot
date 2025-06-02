@@ -12,8 +12,8 @@ WORKDIR /app
 # Copy file requirements.txt và cài đặt dependencies trước
 # Điều này giúp tận dụng Docker cache nếu dependencies không thay đổi
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
+RUN pip install --upgrade pip &&
+    pip install --no-cache-dir -r requirements.txt
 # Copy toàn bộ mã nguồn ứng dụng vào container
 COPY . .
 
