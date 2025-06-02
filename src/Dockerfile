@@ -25,7 +25,7 @@ COPY src/ ./src/
 
 # Mở port nếu ứng dụng Node.js có listen (Bot Discord không cần)
 # EXPOSE 3000
-
+EXPOSE 3000 # Nếu bạn dùng port 3000 cho health check
 # Lệnh để chạy ứng dụng khi container khởi động
 # npm start sẽ chạy node src/index.js (định nghĩa trong package.json)
 CMD ["npm", "start"]
