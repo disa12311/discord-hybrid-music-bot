@@ -1,26 +1,29 @@
 {
   "name": "discord-hybrid-music-bot",
   "version": "1.0.0",
-  "description": "A Discord Music Bot with Node.js frontend and Python backend.",
-  "main": "src/index.js",
+  "description": "A powerful Discord music bot with hybrid commands and advanced UI.",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "deploy-commands": "node src/deploy-commands.js",
-    "dev": "nodemon src/index.js"
+    "start": "node index.js"
   },
-  "keywords": ["discord", "music", "bot", "nodejs", "python", "hybrid"],
-  "author": "Your Name",
+  "keywords": [
+    "discord",
+    "bot",
+    "music",
+    "discord.js",
+    "distube",
+    "slash commands",
+    "hybrid commands"
+  ],
+  "author": "YourName",
   "license": "ISC",
   "dependencies": {
-    "@discordjs/voice": "^0.16.0",
-    "@discord-player/extractor": "^4.4.1",
-    "discord-player": "^6.6.9",
-    "discord.js": "^14.14.1",
-    "dotenv": "^16.4.5",
-    "node-fetch": "^3.3.2"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
+    "@distube/soundcloud": "^1.3.3",
+    "@distube/spotify": "^1.6.0",
+    "@distube/yt-dlp": "^1.1.3",
+    "discord.js": "^14.15.3",
+    "distube": "^5.0.0",
+    "dotenv": "^16.4.5"
   }
 }
