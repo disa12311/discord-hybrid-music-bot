@@ -1,6 +1,5 @@
 // index.js
 import { Client, GatewayIntentBits, Partials, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { Client, GatewayIntentBits, Partials, Collection } from 'discord.js';
 import { DisTube } from 'distube';
 import { SoundCloudPlugin } from '@distube/soundcloud';
 import { SpotifyPlugin } from '@distube/spotify';
@@ -19,14 +18,15 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.GuildMessageReactions, // THÊM INTENT NÀY
+        GatewayIntentBits.GuildMessageReactions, // Cho Reaction Role
+        GatewayIntentBits.GuildMembers,         // Cho Moderation và Reaction Role
     ],
     partials: [
         Partials.Channel,
         Partials.Message,
-        Partials.Reaction, // THÊM PARTIAL NÀY
-        Partials.User,      // VÀ CẢ CÁI NÀY NỮA
-        Partials.GuildMember, // VÀ CÁI NÀY ĐỂ FETCH THÔNG TIN THÀNH VIÊN ĐẦY ĐỦ
+        Partials.Reaction,
+        Partials.User,
+        Partials.GuildMember,
     ],
 });
 
@@ -35,7 +35,7 @@ client.distube = new DisTube(client, {
     emitNewSongOnly: true,
     leaveOnFinish: true,
     leaveOnEmpty: true,
-    emptyCooldown: 60, // Thời gian bot ở lại kênh thoại nếu không có ai
+    emptyCooldown: 60,
     plugins: [
         new SoundCloudPlugin(),
         new SpotifyPlugin({
@@ -46,6 +46,9 @@ client.distube = new DisTube(client, {
 });
 
 client.config = config; // Gán config vào client để dễ dàng truy cập
+
+// Sử dụng Map để lưu trữ thông tin reaction roles (tạm thời, nên dùng DB cho bền vững)
+client.reactionRoles = new Map();
 
 // Load Commands và Events
 (async () => {
@@ -74,11 +77,9 @@ client.config = config; // Gán config vào client để dễ dàng truy cập
     });
 })();
 
-
 // Xử lý các sự kiện của DisTube
 client.distube
     .on('playSong', (queue, song) => {
-        // Tạo các nút điều khiển
         const row = new ActionRowBuilder()
             .addComponents(
                 new ButtonBuilder()
@@ -103,7 +104,6 @@ client.distube
                     .setStyle(ButtonStyle.Secondary),
             );
 
-        // Gửi tin nhắn có kèm nút
         queue.textChannel.send({
             embeds: [{
                 title: '🎶 Đang phát',
@@ -114,10 +114,10 @@ client.distube
                     { name: 'Được yêu cầu bởi', value: `${song.user}`, inline: true },
                     { name: 'Lượt xem', value: `${song.views.toLocaleString()}`, inline: true }
                 ],
-                color: client.config.embedColor, // Sử dụng màu từ config
+                color: client.config.embedColor,
                 footer: { text: `Kênh: ${song.uploader.name}` }
             }],
-            components: [row] // Thêm các nút vào đây
+            components: [row]
         });
     })
     .on('addSong', (queue, song) =>
