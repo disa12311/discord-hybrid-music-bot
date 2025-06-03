@@ -1,4 +1,5 @@
 // index.js
+import { Client, GatewayIntentBits, Partials, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { Client, GatewayIntentBits, Partials, Collection } from 'discord.js';
 import { DisTube } from 'distube';
 import { SoundCloudPlugin } from '@distube/soundcloud';
