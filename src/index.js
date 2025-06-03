@@ -16,11 +16,18 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent, // Quan trọng cho prefix commands và đọc tin nhắn
+        GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.DirectMessages, // Nếu bạn muốn bot phản hồi tin nhắn trực tiếp
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildMessageReactions, // THÊM INTENT NÀY
     ],
-    partials: [Partials.Channel, Partials.Message], // Quan trọng cho Direct Messages và reaction roles
+    partials: [
+        Partials.Channel,
+        Partials.Message,
+        Partials.Reaction, // THÊM PARTIAL NÀY
+        Partials.User,      // VÀ CẢ CÁI NÀY NỮA
+        Partials.GuildMember, // VÀ CÁI NÀY ĐỂ FETCH THÔNG TIN THÀNH VIÊN ĐẦY ĐỦ
+    ],
 });
 
 // Khởi tạo DisTube
