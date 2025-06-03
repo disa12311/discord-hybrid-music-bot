@@ -2,7 +2,6 @@
 export default {
     name: 'messageReactionRemove',
     async execute(client, reaction, user) {
-        // Nếu reaction không đầy đủ thông tin hoặc là bot tự reaction, bỏ qua
         if (reaction.partial) {
             try {
                 await reaction.fetch();
@@ -11,16 +10,14 @@ export default {
                 return;
             }
         }
-        if (user.bot) return; // Bỏ qua nếu bot là người reaction
+        if (user.bot) return;
 
-        // Kiểm tra xem đây có phải là tin nhắn reaction role đã lưu không
         const roleMap = client.reactionRoles?.get(reaction.message.id);
-        if (!roleMap) return; // Không phải tin nhắn reaction role của bot
+        if (!roleMap) return;
 
-        // Lấy role ID tương ứng với emoji
-        const roleId = roleMap.get(reaction.emoji.name) || roleMap.get(reaction.emoji.id); // Check for unicode emoji name or custom emoji ID
+        const roleId = roleMap.get(reaction.emoji.name) || roleMap.get(reaction.emoji.id);
 
-        if (!roleId) return; // Emoji không được cấu hình cho reaction role này
+        if (!roleId) return;
 
         const guild = reaction.message.guild;
         const member = await guild.members.fetch(user.id);
