@@ -1,5 +1,5 @@
 // events/client/interactionCreate.js
-import { PermissionsBitField } from 'discord.js'; // Đảm bảo import PermissionsBitField
+import { PermissionsBitField } from 'discord.js';
 
 export default {
     name: 'interactionCreate',
@@ -14,7 +14,6 @@ export default {
             }
 
             try {
-                // Thực thi lệnh. Truyền client vào để các lệnh có thể truy cập thuộc tính của client (ví dụ: client.distube)
                 await command.execute(interaction, client);
             } catch (error) {
                 console.error(`Lỗi khi thực thi lệnh ${interaction.commandName}:`, error);
@@ -26,12 +25,11 @@ export default {
             }
         }
 
-        // --- Xử lý Button Interactions ---
+        // --- Xử lý Button Interactions (DisTube Music Controls) ---
         if (interaction.isButton()) {
             const { customId, guild, member, channel } = interaction;
             const queue = client.distube.getQueue(guild);
 
-            // Kiểm tra xem có phải là nút điều khiển nhạc không
             if (customId.startsWith('distube-')) {
                 if (!queue) {
                     return interaction.reply({ content: 'Không có bài hát nào đang phát!', ephemeral: true });
@@ -65,7 +63,7 @@ export default {
                             await interaction.reply({ content: '⏹️ Đã dừng phát nhạc và rời kênh.', ephemeral: true });
                             break;
                         case 'distube-loop':
-                            const mode = queue.toggleRepeat(); // 0 = off, 1 = repeat song, 2 = repeat queue
+                            const mode = queue.toggleRepeat();
                             let loopModeText;
                             if (mode === 0) loopModeText = 'Tắt lặp';
                             else if (mode === 1) loopModeText = 'Lặp bài hát hiện tại';
@@ -73,7 +71,6 @@ export default {
                             await interaction.reply({ content: `🔁 Đã cài đặt chế độ lặp: \`${loopModeText}\`.`, ephemeral: true });
                             break;
                         case 'distube-queue':
-                            // Hiển thị hàng chờ (tối đa 1900 ký tự cho tin nhắn Discord)
                             const q = queue.songs.map((song, i) =>
                                 `${i === 0 ? 'Đang phát:' : `${i}.`} ${song.name} - \`${song.formattedDuration}\``
                             ).join('\n');
@@ -107,11 +104,6 @@ export default {
                 try {
                     await target.ban({ reason: reason });
                     await interaction.editReply(`Đã cấm **${target.user.tag}** với lý do: \`${reason}\`.`);
-                    // Bạn có thể thêm phần gửi tin nhắn log ra kênh cụ thể tại đây
-                    // const logChannel = interaction.guild.channels.cache.get('ID_KENH_LOG');
-                    // if (logChannel) {
-                    //     logChannel.send(`Người dùng ${target.user.tag} đã bị cấm bởi ${interaction.user.tag}. Lý do: ${reason}`);
-                    // }
                 } catch (error) {
                     console.error(`Lỗi khi cấm người dùng ${target.user.tag}:`, error);
                     await interaction.editReply(`Đã xảy ra lỗi khi cấm ${target.user.tag}.`);
@@ -125,24 +117,20 @@ export default {
             if (interaction.customId === 'role-select-menu') {
                 await interaction.deferReply({ ephemeral: true });
 
-                const selectedRoleIds = interaction.values; // Mảng các ID vai trò đã chọn
+                const selectedRoleIds = interaction.values;
                 const member = interaction.member;
 
-                // Lấy tất cả các vai trò mà Select Menu này có thể cung cấp
                 const allPossibleRoleIds = interaction.component.options.map(option => option.value);
 
                 const rolesToAdd = [];
                 const rolesToRemove = [];
 
-                // Quyết định vai trò nào cần thêm, vai trò nào cần gỡ
                 for (const roleId of allPossibleRoleIds) {
                     if (selectedRoleIds.includes(roleId)) {
-                        // Nếu vai trò được chọn và thành viên chưa có -> thêm
                         if (!member.roles.cache.has(roleId)) {
                             rolesToAdd.push(roleId);
                         }
                     } else {
-                        // Nếu vai trò không được chọn và thành viên đang có -> gỡ
                         if (member.roles.cache.has(roleId)) {
                             rolesToRemove.push(roleId);
                         }
