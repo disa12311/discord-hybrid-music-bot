@@ -69,19 +69,57 @@ client.config = config; // Gán config vào client để dễ dàng truy cập
 
 // Xử lý các sự kiện của DisTube
 client.distube
-    .on('playSong', (queue, song) =>
-        queue.textChannel.send(
-            `🎶 Đang phát \`${song.name}\` - \`${song.formattedDuration}\`\nĐược yêu cầu bởi: ${song.user}`
-        )
-    )
+    .on('playSong', (queue, song) => {
+        // Tạo các nút điều khiển
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('distube-pause-resume')
+                    .setLabel('⏸️/▶️ Dừng/Tiếp tục')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('distube-skip')
+                    .setLabel('⏭️ Bỏ qua')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('distube-stop')
+                    .setLabel('⏹️ Dừng')
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId('distube-loop')
+                    .setLabel('🔁 Lặp')
+                    .setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder()
+                    .setCustomId('distube-queue')
+                    .setLabel('📜 Hàng chờ')
+                    .setStyle(ButtonStyle.Secondary),
+            );
+
+        // Gửi tin nhắn có kèm nút
+        queue.textChannel.send({
+            embeds: [{
+                title: '🎶 Đang phát',
+                description: `[${song.name}](${song.url})`,
+                thumbnail: { url: song.thumbnail },
+                fields: [
+                    { name: 'Thời lượng', value: `\`${song.formattedDuration}\``, inline: true },
+                    { name: 'Được yêu cầu bởi', value: `${song.user}`, inline: true },
+                    { name: 'Lượt xem', value: `${song.views.toLocaleString()}`, inline: true }
+                ],
+                color: client.config.embedColor, // Sử dụng màu từ config
+                footer: { text: `Kênh: ${song.uploader.name}` }
+            }],
+            components: [row] // Thêm các nút vào đây
+        });
+    })
     .on('addSong', (queue, song) =>
         queue.textChannel.send(
-            `➕ Đã thêm ${song.name} - \`${song.formattedDuration}\` vào hàng chờ bởi ${song.user}`
+            `➕ Đã thêm **${song.name}** - \`${song.formattedDuration}\` vào hàng chờ bởi ${song.user}`
         )
     )
     .on('addList', (queue, playlist) =>
         queue.textChannel.send(
-            `➕ Đã thêm \`${playlist.name}\` (${playlist.songs.length} bài hát) vào hàng chờ`
+            `➕ Đã thêm playlist \`${playlist.name}\` (${playlist.songs.length} bài hát) vào hàng chờ!`
         )
     )
     .on('error', (channel, e) => {
