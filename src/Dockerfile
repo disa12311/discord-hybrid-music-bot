@@ -1,25 +1,22 @@
-# Sử dụng một image Node.js chính thức làm base image
+# Sử dụng Node.js 20 làm base image (bạn có thể đổi sang 18 nếu muốn)
 FROM node:20-slim
 
-# Thiết lập thư mục làm việc trong container
+# Thiết lập thư mục làm việc bên trong container
 WORKDIR /app
 
-# Sao chép package.json và package-lock.json để tận dụng Docker cache
-# Điều này giúp việc cài đặt dependencies nhanh hơn nếu package.json không thay đổi
-COPY package*.json ./
+# Copy package.json và package-lock.json trước để tận dụng Docker cache
+# Điều này giúp npm install chạy lại nhanh hơn khi các dependencies thay đổi
+COPY package.json package-lock.json* ./
 
 # Cài đặt các dependencies
-# --omit=dev để chỉ cài đặt dependencies cho production, giúp giảm kích thước image
-# --production cũng có tác dụng tương tự
-RUN npm install --omit=dev --production
+RUN npm install --production
 
-# Sao chép toàn bộ mã nguồn ứng dụng (bot Discord) vào thư mục làm việc
+# Copy toàn bộ source code của ứng dụng vào thư mục làm việc
 COPY . .
 
-# Mở port nếu bot có bất kỳ dịch vụ HTTP nào (ví dụ: health check)
-# Nếu bot của bạn chỉ giao tiếp với Discord API và không có HTTP server, dòng này có thể bỏ qua
-EXPOSE 3000
+# Mở cổng nếu ứng dụng của bạn có một server (ví dụ: dashboard web), nếu không có thì không cần
+# EXPOSE 3000
 
-# Lệnh để khởi động ứng dụng (bot Discord)
-# "npm start" sẽ chạy script "start" trong package.json
+# Lệnh để khởi động ứng dụng
+# Phải khớp với "start" script trong package.json của bạn
 CMD ["npm", "start"]
