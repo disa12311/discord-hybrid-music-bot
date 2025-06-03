@@ -5,12 +5,9 @@ FROM node:20-slim
 WORKDIR /app
 
 # Copy package.json trước để tận dụng Docker cache
-# CHỈ SAO CHÉP package.json
 COPY package.json ./
 
 # Cài đặt các dependencies
-# "--production" giúp chỉ cài đặt các dependencies cần thiết cho môi trường production,
-# giúp giảm kích thước image và thời gian build.
 RUN npm install --production
 
 # Copy toàn bộ source code của ứng dụng vào thư mục làm việc
