@@ -1,58 +1,33 @@
 // src/handlers/commandHandler.js
-const fs = require('fs');
-const path = require('path');
-const { REST, Routes } = require('discord.js');
+import { readdirSync } from 'fs';
+import { Collection } from 'discord.js';
 
-module.exports = (client, commandsPath) => {
-    const commands = [];
-    const commandFolders = fs.readdirSync(commandsPath);
+/**
+ * Loads commands from the 'commands' directory.
+ * @param {import('discord.js').Client} client The Discord client.
+ */
+export async function loadCommands(client) {
+    client.commands = new Collection();
+    client.slashCommands = []; // Mảng để lưu trữ dữ liệu slash commands để đăng ký
+
+    const commandFolders = readdirSync('./commands');
 
     for (const folder of commandFolders) {
-        const folderPath = path.join(commandsPath, folder);
-        const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
+        const commandFiles = readdirSync(`./commands/${folder}`).filter(file => file.endsWith('.js'));
         for (const file of commandFiles) {
-            const filePath = path.join(folderPath, file);
-            const command = require(filePath);
-            if ('data' in command && 'execute' in command) {
+            const { default: command } = await import(`../../commands/${folder}/${file}`);
+
+            if (command.data) { // Đây là Slash Command
+                client.slashCommands.push(command.data.toJSON());
                 client.commands.set(command.data.name, command);
-                commands.push(command.data.toJSON());
-                client.logger.debug(`Đã tải lệnh: ${command.data.name} từ ${filePath}`);
+            } else if (command.name) { // Đây là Prefix Command
+                client.commands.set(command.name, command);
             } else {
-                client.logger.warn(`Lệnh tại ${filePath} thiếu thuộc tính "data" hoặc "execute" bắt buộc.`);
+                console.warn(`[WARNING] Command at ${folder}/${file} is missing 'data' or 'name' property.`);
             }
         }
     }
 
-    // Đăng ký lệnh với Discord API
-    client.once('ready', async () => {
-        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-        try {
-            client.logger.info(`Đang làm mới ${commands.length} (/) lệnh ứng dụng.`);
-            const data = await rest.put(
-                Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
-                { body: commands },
-            );
-            client.logger.info(`Đã tải lại thành công ${data.length} (/) lệnh ứng dụng.`);
-        } catch (error) {
-            client.logger.error(`Lỗi khi đăng ký lệnh ứng dụng: ${error.message}`, error);
-        }
-    });
-
-    // Lắng nghe tương tác lệnh
-    client.on('interactionCreate', async interaction => {
-        if (!interaction.isChatInputCommand()) return;
-
-        const command = client.commands.get(interaction.commandName);
-
-        if (!command) {
-            client.logger.error(`Không tìm thấy lệnh ${interaction.commandName}.`);
-            return;
-        }
-
-        try {
-            await command.execute(interaction, client);
-        } catch (error) {
-            client.handleError(error, interaction, client);
-        }
-    });
-};
+    console.log(`Loaded ${client.commands.size} commands.`);
+    return client.commands;
+}
