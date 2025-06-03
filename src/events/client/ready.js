@@ -1,9 +1,8 @@
-const { info } = require("../utils/logger");
-
-module.exports = {
-  name: "ready",
-  once: true,
-  execute(client) {
-    info(`Bot đã sẵn sàng! Logged in as ${client.user.tag}`);
-  }
+// events/client/ready.js
+export default {
+    name: 'ready',
+    once: true, // Chỉ chạy một lần khi bot khởi động
+    execute(client) {
+        console.log(`[EVENT] ${client.user.tag} đã sẵn sàng!`);
+    },
 };
