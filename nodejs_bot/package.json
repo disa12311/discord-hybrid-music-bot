@@ -1,0 +1,13 @@
+{
+  "name": "discord-music-bot-node",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^14.13.0",
+    "@discordjs/voice": "^0.16.0",
+    "ytdl-core": "^4.11.1"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}
