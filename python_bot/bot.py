@@ -1,25 +1,21 @@
+import os
 import discord
 from discord.ext import commands
 import wavelink
-import asyncio
-import config
+from config import TOKEN
 
-bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='/', intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f'✅ Bot ready as {bot.user}')
-    await wavelink.NodePool.create_node(bot=bot, host='localhost', port=2333, password='youshallnotpass')
+    print(f'Bot ready: {bot.user}')
+    # Khởi Lavalink node
+    await wavelink.NodePool.create_node(bot=bot, host='lavalink', port=2333, password='youshallnotpass')
 
-@bot.slash_command(name="play")
-async def play(ctx, url: str):
-    if not ctx.author.voice:
-        return await ctx.respond("❌ Bạn phải ở trong voice channel.")
+# Load cogs
+for cog in ['music', 'controls']:
+    bot.load_extension(f'cogs.{cog}')
 
-    vc = ctx.voice_client or await ctx.author.voice.channel.connect(cls=wavelink.Player)
-
-    track = await wavelink.YouTubeTrack.search(query=url, return_first=True)
-    await vc.play(track)
-    await ctx.respond(f"🎶 Đang phát: {track.title}")
-
-bot.run(config.TOKEN)
+bot.run(os.getenv('TOKEN') or TOKEN)
