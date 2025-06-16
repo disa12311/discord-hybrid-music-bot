@@ -1,54 +1,24 @@
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus } = require('@discordjs/voice');
-const ytdl = require('ytdl-core');
+const fs = require('fs');
+const path = require('path');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const { joinVoiceChannel, createAudioPlayer } = require('@discordjs/voice');
 const config = require('./config.json');
 
-const client = new Client({ intents: [
-  GatewayIntentBits.Guilds,
-  GatewayIntentBits.GuildVoiceStates,
-  GatewayIntentBits.GuildMessages
-] });
-
+const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates] });
 client.commands = new Collection();
-const queue = new Map();
 
-// Slash command setup simplified
-client.on('ready', () => {
-  console.log(`✅ Bot ready as ${client.user.tag}`);
+// Load commands
+const commandsPath = path.join(__dirname, 'commands');
+fs.readdirSync(commandsPath).filter(f => f.endsWith('.js')).forEach(file => {
+  const cmd = require(path.join(commandsPath, file));
+  client.commands.set(cmd.data.name, cmd);
 });
 
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const serverQueue = queue.get(interaction.guild.id);
-
-  if (interaction.commandName === 'play') {
-    const url = interaction.options.getString('url');
-    if (!url || !ytdl.validateURL(url)) {
-      return interaction.reply('❌ URL không hợp lệ.');
-    }
-
-    const voiceChannel = interaction.member.voice.channel;
-    if (!voiceChannel) return interaction.reply('❌ Bạn phải ở trong voice channel.');
-
-    const connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
-      guildId: interaction.guild.id,
-      adapterCreator: interaction.guild.voiceAdapterCreator
-    });
-
-    const stream = ytdl(url, { filter: 'audioonly' });
-    const resource = createAudioResource(stream);
-    const player = createAudioPlayer();
-    player.play(resource);
-    connection.subscribe(player);
-
-    player.on(AudioPlayerStatus.Idle, () => {
-      connection.destroy();
-    });
-
-    interaction.reply(`🎶 Đang phát: ${url}`);
-  }
+// Events
+fs.readdirSync(path.join(__dirname, 'events')).filter(f => f.endsWith('.js')).forEach(file => {
+  const event = require(path.join(__dirname, 'events', file));
+  if (event.once) client.once(event.name, (...args) => event.execute(...args, client));
+  else client.on(event.name, (...args) => event.execute(...args, client));
 });
 
-client.login(config.token);
+client.login(process.env.TOKEN || config.token);
